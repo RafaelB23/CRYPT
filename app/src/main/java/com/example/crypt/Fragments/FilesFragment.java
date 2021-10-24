@@ -291,7 +291,7 @@ public class FilesFragment extends Fragment {
         DatabaseReference ref = db.getReference("FilesManager").child(UserId);
 
         String defaultPass = "nullPass";
-        StorageMetadata metadata = new StorageMetadata.Builder()    // Encriptar
+        StorageMetadata metadata = new StorageMetadata.Builder()    // Encriptar//
                 .setCustomMetadata("Password", defaultPass)
                 .setCustomMetadata("Type", fileExt)
                 .setCustomMetadata("Author", UserId)
