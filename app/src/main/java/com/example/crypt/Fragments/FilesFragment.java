@@ -291,7 +291,7 @@ public class FilesFragment extends Fragment {
         DatabaseReference ref = db.getReference("FilesManager").child(UserId);
 
         String defaultPass = "nullPass";
-        StorageMetadata metadata = new StorageMetadata.Builder()
+        StorageMetadata metadata = new StorageMetadata.Builder()    // Encriptar
                 .setCustomMetadata("Password", defaultPass)
                 .setCustomMetadata("Type", fileExt)
                 .setCustomMetadata("Author", UserId)
@@ -313,7 +313,7 @@ public class FilesFragment extends Fragment {
                 }).addOnCompleteListener(new OnCompleteListener<StorageMetadata>() {
             @Override
             public void onComplete(@NonNull Task<StorageMetadata> task) {
-                HashMap<String, Object> result = new HashMap<>();
+                HashMap<String, Object> result = new HashMap<>();   // Encriptar
                 result.put("fileName", fileName);
                 result.put("fileType", fileExt);
                 result.put("filePass", defaultPass);
