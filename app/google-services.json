@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "909421234110",
+    "project_id": "crypt-9d174",
+    "storage_bucket": "crypt-9d174.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:909421234110:android:fd4a36820b4179956b5bef",
+        "android_client_info": {
+          "package_name": "com.example.crypt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "909421234110-o6b2oqskpj1dbt79qp0qviu4h8lgo3f5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqk752-yKqk5gv4P253hs1xe9FAfIkXP4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "909421234110-o6b2oqskpj1dbt79qp0qviu4h8lgo3f5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
