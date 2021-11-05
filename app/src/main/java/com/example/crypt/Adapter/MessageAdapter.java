@@ -51,7 +51,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
         Chat chat = mChat.get(position);
 
         holder.show_message.setText(chat.getMessage());
-
+        //IMG
         if(imageurl.isEmpty()){
             holder.profile_image.setImageResource(R.mipmap.ic_launcher);
         }else{
