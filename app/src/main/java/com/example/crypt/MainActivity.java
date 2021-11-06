@@ -126,22 +126,24 @@ public class MainActivity extends AppCompatActivity {
     }
     private void status(String status){
         db = FirebaseDatabase.getInstance().getReference("Users").child(fUser.getUid());
-        if(db != null){
-            HashMap<String, Object> hashMap = new HashMap<>();
-            hashMap.put("status", status);
-            db.updateChildren(hashMap);
-        }
+        HashMap<String, Object> hashMap = new HashMap<>();
+        hashMap.put("status", status);
+        db.updateChildren(hashMap);
     }
-
-    @Override
+    /*@Override
     protected void onResume() {
         super.onResume();
         status("online");
     }
-
     @Override
+    protected void onStop() {
+        super.onStop();
+        status("offline");
+    }*/
+
+    /*@Override
     protected void onPause() {
         super.onPause();
-        status("offline");
-    }
+
+    }*/
 }

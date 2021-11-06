@@ -139,7 +139,8 @@ public class MessageActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 //CardFile.show();
-                cardView.setVisibility(View.VISIBLE);
+                openimg();
+                //cardView.setVisibility(View.VISIBLE);
 
                 btnImg.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -272,17 +273,7 @@ public class MessageActivity extends AppCompatActivity {
         reference.updateChildren(hashMap);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        status("online");
-    }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        status("offline");
-    }
 
     /** Subir archivo media **/
     private String geyFileExtension(Uri uri){
