@@ -25,6 +25,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -71,7 +72,8 @@ public class MessageActivity extends AppCompatActivity {
 
     ImageButton btn_send, btn_multi;
     EditText txt_send;
-    Dialog CardFile;
+    LinearLayout btnDoc, btnImg;
+    CardView cardView;
 
     MessageAdapter messageAdapter;
     List<Chat> mchat;
@@ -80,6 +82,7 @@ public class MessageActivity extends AppCompatActivity {
     String password="g4sr7t";
 
     public String userid;
+    public int msgType;
 
     StorageReference storageReference;
     private StorageTask<UploadTask.TaskSnapshot> uploadTask;
@@ -91,7 +94,7 @@ public class MessageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_message);
 
-        CardFile = new Dialog(this);
+        //CardFile = new Dialog(MessageActivity.this);
 
         Toolbar toolbar = findViewById(R.id.toolbar_main);
         setSupportActionBar(toolbar);
@@ -115,10 +118,12 @@ public class MessageActivity extends AppCompatActivity {
         linearLayoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(linearLayoutManager);
 
-        CardFile.setContentView(R.layout.selector_typefile);
-        CardFile.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        LinearLayout btnDoc = CardFile.findViewById(R.id.item_file);
-        LinearLayout btnImg = CardFile.findViewById(R.id.item_img);
+        //CardFile.setContentView(R.layout.selector_typefile);
+        //CardFile.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        cardView = findViewById(R.id.multiCard);
+        btnDoc = findViewById(R.id.item_file);
+        btnImg = findViewById(R.id.item_img);
 
         profile_image = findViewById(R.id.profile_image);
         username = findViewById(R.id.username);
@@ -133,14 +138,16 @@ public class MessageActivity extends AppCompatActivity {
         btn_multi.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                CardFile.show();
+                //CardFile.show();
+                cardView.setVisibility(View.VISIBLE);
 
                 btnImg.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         // Upload Image
                         openimg();
-                        CardFile.hide();
+                        //CardFile.hide();
+                        cardView.setVisibility(View.GONE);
                     }
                 });
                 btnDoc.setOnClickListener(new View.OnClickListener() {
@@ -148,7 +155,8 @@ public class MessageActivity extends AppCompatActivity {
                     public void onClick(View v) {
                         //Upload File
                         openfiles();
-                        CardFile.hide();
+                        //CardFile.hide();
+                        cardView.setVisibility(View.GONE);
                     }
                 });
                 //openfiles();
@@ -161,6 +169,7 @@ public class MessageActivity extends AppCompatActivity {
                 if(!msg.equals("")){
                     try{
                         msg = encriptar(msg, password);
+                        msgType = 1;
                         sendMessage(fUser.getUid(), userid, msg);
                     }catch (Exception e){
                         e.printStackTrace();
@@ -214,12 +223,14 @@ public class MessageActivity extends AppCompatActivity {
         intent.setType("image/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);
         startActivityForResult(intent, IMAGE_REQUEST);
+        msgType = 2;
     }
     private void openfiles() {
         Intent intent = new Intent();
         intent.setType("*/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);
         startActivityForResult(intent, CONTEXT_INCLUDE_CODE);
+        msgType = 3;
     }
 
     private void sendMessage(String sender, String receiver, String message){
@@ -228,6 +239,7 @@ public class MessageActivity extends AppCompatActivity {
         hashMap.put("sender", sender);
         hashMap.put("receiver", receiver);
         hashMap.put("message", message);
+        hashMap.put("typeMss", msgType);
         data.child("Chats").push().setValue(hashMap);
     }
     private void readMessage(String myid, String userid, String imageurl){

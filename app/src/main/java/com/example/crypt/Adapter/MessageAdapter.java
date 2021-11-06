@@ -21,6 +21,10 @@ import java.util.List;
 public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHolder> {
     public static final int MSG_TYPE_LEFT = 0;
     public static final int MSG_TYPE_RIGHT = 1;
+    public static final int IMG_TYPE_LEFT = 2;
+    public static final int IMG_TYPE_RIGHT = 3;
+    public static final int FILE_TYPE_LEFT = 4;
+    public static final int FILE_TYPE_RIGHT = 5;
 
     private Context mContext;
     private List<Chat> mChat;
@@ -40,6 +44,9 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
         if(viewType == MSG_TYPE_RIGHT){
             View view = LayoutInflater.from(mContext).inflate(R.layout.chat_item_right, parent, false);
             return new MessageAdapter.ViewHolder(view);
+        }else if (viewType == IMG_TYPE_RIGHT){
+            View view = LayoutInflater.from(mContext).inflate(R.layout.chat_img_right, parent, false);
+            return new MessageAdapter.ViewHolder(view);
         }else{
             View view = LayoutInflater.from(mContext).inflate(R.layout.chat_item_left, parent, false);
             return new MessageAdapter.ViewHolder(view);
@@ -50,8 +57,13 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     public void onBindViewHolder(@NonNull MessageAdapter.ViewHolder holder, int position) {
         Chat chat = mChat.get(position);
 
-        holder.show_message.setText(chat.getMessage());
-        //IMG
+
+        if (chat.getTypeMss() == 2){
+            Glide.with(mContext).load(chat.getMessage()).into(holder.img_msg);
+        }else {
+            holder.show_message.setText(chat.getMessage());
+        }
+
         if(imageurl.isEmpty()){
             holder.profile_image.setImageResource(R.mipmap.ic_launcher);
         }else{
@@ -66,13 +78,13 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
     public class ViewHolder extends RecyclerView.ViewHolder{
         public TextView show_message;
-        public ImageView profile_image;
+        public ImageView profile_image, img_msg;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-
             show_message = itemView.findViewById(R.id.show_message);
             profile_image = itemView.findViewById(R.id.profile_image);
+            img_msg = itemView.findViewById(R.id.mess_img);
         }
     }
 
@@ -80,9 +92,32 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     public int getItemViewType(int position) {
         fUser = FirebaseAuth.getInstance().getCurrentUser();
         if (mChat.get(position).getSender().equals(fUser.getUid())){
-            return MSG_TYPE_RIGHT;
+            if (mChat.get(position).getTypeMss() == 2){
+                return IMG_TYPE_RIGHT;
+            }else if (mChat.get(position).getTypeMss() == 3){
+                return FILE_TYPE_RIGHT;
+            }else {
+                return MSG_TYPE_RIGHT;
+            }
         }else {
-            return MSG_TYPE_LEFT;
+            if (mChat.get(position).getTypeMss() == 2){
+                return IMG_TYPE_LEFT;
+            }else if (mChat.get(position).getTypeMss() == 3){
+                return FILE_TYPE_LEFT;
+            }else {
+                return MSG_TYPE_LEFT;
+            }
+        }
+    }
+    public void typeMsg(int typeMss){
+        if (typeMss == 1){
+            //Texto
+        }else if (typeMss == 2){
+            //Multimedia
+        }else  if (typeMss == 3){
+            //Archivo
+        }else {
+            //Texto
         }
     }
 }

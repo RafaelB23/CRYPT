@@ -12,16 +12,22 @@ public class Chat {
     private String sender;
     private String receiver;
     private String message;
+    private int typeMss;
     String password="g4sr7t";
 
-    public Chat(String sender, String receiver, String message) {
+    public Chat(String sender, String receiver, String message, int typeMss) {
         this.sender = sender;
         this.receiver = receiver;
         this.message = message;
+        this.typeMss = typeMss;
     }
 
     public Chat() {
     }
+
+    public int getTypeMss() { return typeMss; }
+
+    public void setTypeMss(int typeMss) { this.typeMss = typeMss; }
 
     public String getSender() {
         return sender;
