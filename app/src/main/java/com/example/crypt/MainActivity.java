@@ -124,12 +124,12 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public CharSequence getPageTitle(int position) { return titles.get(position); }
     }
-    private void status(String status){
+    /*private void status(String status){
         db = FirebaseDatabase.getInstance().getReference("Users").child(fUser.getUid());
         HashMap<String, Object> hashMap = new HashMap<>();
         hashMap.put("status", status);
         db.updateChildren(hashMap);
-    }
+    }*/
     /*@Override
     protected void onResume() {
         super.onResume();

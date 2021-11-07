@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Environment;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -24,20 +25,28 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.crypt.Classes.ChangePassClass;
 import com.example.crypt.Classes.DelPass;
 import com.example.crypt.Classes.PutPasswordClass;
+import com.example.crypt.LogInActivity;
 import com.example.crypt.Model.FilesModel;
+import com.example.crypt.Model.User;
 import com.example.crypt.R;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.ListResult;
 import com.google.firebase.storage.StorageMetadata;
@@ -45,8 +54,14 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
     private Context mContext;
@@ -57,8 +72,14 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
     private String rename;
     boolean DuplicateItem;
     private  Uri UriFileRename;
+    private UserSendFileAdapter userAdapter;
+    private List<User> mUsers;
 
-    private Dialog passDialog, optionsDialog, ValidationDialog, ConfirmDialog, renameDialog, changePassDialog;
+    private String password="g4sr7t";
+    private int counterPassError;
+
+    private Dialog passDialog, optionsDialog, ValidationDialog, ConfirmDialog,
+            renameDialog, changePassDialog, userListDialog, forgothPassDialog;
 
     public FileAdapter(Context mContext, List<FilesModel> mFiles) {
         this.mContext = mContext;
@@ -75,6 +96,10 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
         ConfirmDialog = new Dialog(mContext);
         renameDialog = new Dialog(mContext);
         changePassDialog = new Dialog(mContext);
+        userListDialog = new Dialog(mContext);
+        forgothPassDialog = new Dialog(mContext);
+
+        mUsers = new ArrayList<>();
         return new FileAdapter.ViewHolder(view);
     }
 
@@ -380,27 +405,31 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
                     @Override
                     public void onSuccess(StorageMetadata storageMetadata) {
                         String StPass = storageMetadata.getCustomMetadata("Password");
-                        if (etLastPass.getText().toString().equals(StPass)){
-                            ChangePassClass ChangePass = new ChangePassClass(
-                                    etLastPass.getText().toString(),
-                                    etNewPass.getText().toString(),
-                                    etConfPass.getText().toString(),
-                                    mContext, model
-                            );
-                            int Code = ChangePass.getCODE();
-                            ControllCaseChangePass(Code, changePassDialog, model);
-                        }else if (!etLastPass.getText().toString().equals(StPass)){
-                            Log.d("ChangePass", "No es la contraseña correcta");
-                            Toast.makeText(mContext, "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
-                            EditTextError(etLastPass);
-                            etLastPass.addTextChangedListener(new TextWatcher() {
-                                @Override
-                                public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-                                @Override
-                                public void onTextChanged(CharSequence s, int start, int before, int count) { }
-                                @Override
-                                public void afterTextChanged(Editable s) { EditTextDefaul(etLastPass); }
-                            });
+                        try {
+                            if (etLastPass.getText().toString().equals(desencriptar(StPass, password))){
+                                ChangePassClass ChangePass = new ChangePassClass(
+                                        etLastPass.getText().toString(),
+                                        etNewPass.getText().toString(),
+                                        etConfPass.getText().toString(),
+                                        mContext, model
+                                );
+                                int Code = ChangePass.getCODE();
+                                ControllCaseChangePass(Code, changePassDialog, model);
+                            }else if (!etLastPass.getText().toString().equals(StPass)){
+                                Log.d("ChangePass", "No es la contraseña correcta");
+                                Toast.makeText(mContext, "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
+                                EditTextError(etLastPass);
+                                etLastPass.addTextChangedListener(new TextWatcher() {
+                                    @Override
+                                    public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                                    @Override
+                                    public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                                    @Override
+                                    public void afterTextChanged(Editable s) { EditTextDefaul(etLastPass); }
+                                });
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 });
@@ -421,7 +450,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
         });
     }
 
-    private void ControllCaseChangePass(int Code, Dialog dialog, FilesModel model){
+    private void ControllCaseChangePass(int Code, Dialog dialog, FilesModel model) throws Exception {
         EditText etLastPass = dialog.findViewById(R.id.etLastPass);
         EditText etNewPass = dialog.findViewById(R.id.etNewPass);
         EditText etConfPass = dialog.findViewById(R.id.etConfPass);
@@ -432,7 +461,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
                 new PutPasswordClass(
                         etNewPass.getText().toString(), etConfPass.getText().toString()
                         , model.getFileName(), mContext)
-                        .NewPasswordClass(etNewPass.getText().toString(), model.getFileAuthor());
+                        .NewPasswordClass(encriptar(etNewPass.getText().toString(), password), model.getFileAuthor());
                 //putPasswordClass.NewPasswordClass(Pass, fileAuthor);
                 changePassDialog.hide();
                 break;
@@ -512,6 +541,74 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
     }
     private void CompartirFile(FilesModel model) {
         Toast.makeText(mContext, "Al implementarlo en la app", Toast.LENGTH_SHORT).show();
+        userListDialog.setContentView(R.layout.dialog_userfiles);
+        userListDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        TextView txtTitle = userListDialog.findViewById(R.id.txtTitleDialog);
+
+        String filePass = model.getFilePass();
+        if (model.getFilePass().equals("nullPass")){
+            ImageView ivLock = userListDialog.findViewById(R.id.LockItemDg);
+            ivLock.setVisibility(View.GONE);
+        }
+
+        /*if (type == 0){
+            ImageView ivLock = optionsDialog.findViewById(R.id.LockItemDg);
+
+            ivLock.setVisibility(View.GONE);
+            txtCPass.setVisibility(View.GONE);
+            txtDPass.setVisibility(View.GONE);
+            txtRename.setVisibility(View.GONE);
+        }else if (type == 1){
+            txtNPass.setVisibility(View.GONE);
+            txtRename.setVisibility(View.GONE);
+        }*/
+
+        txtTitle.setText(model.getFileName());
+
+        RecyclerView listadeUsers = userListDialog.findViewById(R.id.userlist);
+        listadeUsers.setHasFixedSize(true);
+        listadeUsers.setLayoutManager(new LinearLayoutManager(mContext));
+
+        userListDialog.show();
+        FirebaseUser fUser = FirebaseAuth.getInstance().getCurrentUser();
+        DatabaseReference db = FirebaseDatabase.getInstance().getReference("Users");
+        db.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DataSnapshot> task) {
+                mUsers.clear();
+                for(DataSnapshot dataSnapshot : task.getResult().getChildren()){
+                    User user = dataSnapshot.getValue(User.class);
+                    assert user != null;
+                    assert fUser != null;
+                    if(!user.getIdUser().equals(fUser.getUid())){
+                        mUsers.add(user);
+                        //Log.d("USERID", );
+                        rootFile(model, fUser.getUid(), listadeUsers);
+                        Log.d("USERID", user.getName());
+                    }
+                }
+
+            }
+        });
+    }
+    private void rootFile(FilesModel model, String uid, RecyclerView listadeUsers){
+        String idFile;
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("FilesManager").child(uid);
+        reference.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DataSnapshot> task) {
+                for (DataSnapshot ds : task.getResult().getChildren()){
+                    FilesModel file = ds.getValue(FilesModel.class);
+                    if (file.getFileName().equals(model.getFileName())){
+                        userAdapter = new UserSendFileAdapter(mContext, mUsers, ds.getKey(), uid, false);
+                        listadeUsers.setAdapter(userAdapter);
+                    }
+
+                }
+
+            }
+        });
     }
 
     private void RenameFile(FilesModel model) {
@@ -786,14 +883,25 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
                 ConfPass = etConfPass.getText().toString();
                 // Toast.makeText(mContext, "Contraseña establecida", Toast.LENGTH_SHORT).show();
                 // passDialog.hide();
-                PutPasswordClass putPasswordClass = new PutPasswordClass(Pass, ConfPass, fileName, mContext);
+                PutPasswordClass putPasswordClass = null;
+                try {
+                    putPasswordClass = new PutPasswordClass(Pass, ConfPass, fileName, mContext);
+                    Log.d("USERID", encriptar(Pass,password));
+                    Log.d("USERID", encriptar(ConfPass,password));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
                 int Code = putPasswordClass.getCode();
 
                 switch (Code){
                     case 0:
                         Log.d("CODE", "Todo bien!");
-                        putPasswordClass.NewPasswordClass(Pass, fileAuthor);
+                        try {
+                            putPasswordClass.NewPasswordClass(encriptar(Pass,password), fileAuthor);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         passDialog.hide();
                         break;
                     case 1:
@@ -917,17 +1025,20 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
 
     // Valida que la contraseña de un Item protegido sea la correcta
     public void openValidPass(FilesModel filesModel){
+        counterPassError = 0;
 
         ValidationDialog = ValidDgInit();
 
         TextView btnAceptar = ValidationDialog.findViewById(R.id.btnAceptar);
         TextView btnCancelar = ValidationDialog.findViewById(R.id.btnCancelar);
+        TextView txtforgot = ValidationDialog.findViewById(R.id.forgothPass);
         EditText etPass = ValidationDialog.findViewById(R.id.etPass);
 
         btnAceptar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String Pass = etPass.getText().toString();
+
 
                 if (Pass.isEmpty()){
                     Toast.makeText(mContext, "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
@@ -941,7 +1052,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
                         public void afterTextChanged(Editable s) { EditTextDefaul(etPass); }
                     });
                 }else {
-                    SearhData(filesModel, etPass.getText().toString(), etPass);
+                    SearhData(filesModel, etPass.getText().toString(), etPass, txtforgot);
                 }
 
 
@@ -952,6 +1063,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
             @Override
             public void onClick(View v) {
                 EditTextDefaul(etPass);
+                counterPassError = 0;
                 ValidationDialog.hide();
             }
 
@@ -959,7 +1071,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
 
     }
     // Verifica si la contraseña es correcta cuando un Item estan protegido
-    public void SearhData(FilesModel filesModel, String pass, EditText etPass){
+    public void SearhData(FilesModel filesModel, String pass, EditText etPass, TextView txtforgot){
         // Extraer los datos
         StorageReference storage = FirebaseStorage.getInstance().getReference("FilesManager")
                 .child(filesModel.getFileAuthor()).child(filesModel.getFileName());
@@ -982,30 +1094,58 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
                 // Inicia la busqueda de datos en Db
                 DatabaseReference db = FirebaseDatabase.getInstance().getReference("FilesManager")
                         .child(filesModel.getFileAuthor());
+
                 db.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
                     @Override
                     public void onComplete(@NonNull Task<DataSnapshot> task) {
                         for (DataSnapshot ds : task.getResult().getChildren()){
                             if (ds.child("fileName").getValue().equals(filesModel.getFileName())){
                                 DbPass = ds.child("filePass").getValue().toString();
-                                Log.w("Key2", "Pass:   " + pass);
-                                Log.w("Key2", "StPass: " + StPass);
-                                Log.w("Key2", "DbPass: " + DbPass);
-                                if (pass.equals(StPass) && pass.equals(DbPass)){
-                                    OpenOptionsDg(filesModel, filesModel.getFileName(), 1);
-                                    ValidationDialog.hide();
-                                }else {
-                                    Toast.makeText(mContext, "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
-                                    EditTextError(etPass);
-                                    etPass.addTextChangedListener(new TextWatcher() {
-                                        @Override
-                                        public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-                                        @Override
-                                        public void onTextChanged(CharSequence s, int start, int before, int count) { }
-                                        @Override
-                                        public void afterTextChanged(Editable s) { EditTextDefaul(etPass); }
-                                    });
+                                /*Log.w("USERID", "Pass:   " + pass);
+                                Log.w("USERID", "StPass: " + StPass);
+                                Log.w("USERID", "DbPass: " + DbPass);*/
+                                try {
+                                    /*desencriptar(StPass, password);
+                                    desencriptar(DbPass, password);*/
+                                    if (pass.equals(desencriptar(StPass, password)) && pass.equals(desencriptar(DbPass, password))){
+                                        OpenOptionsDg(filesModel, filesModel.getFileName(), 1);
+                                        counterPassError = 0;
+                                        ValidationDialog.hide();
+                                    }else {
+                                        Toast.makeText(mContext, "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
+                                        counterPassError++;
+                                        if (counterPassError >= 3){
+                                            txtforgot.setVisibility(View.VISIBLE);
+                                            txtforgot.setOnClickListener(new View.OnClickListener() {
+                                                @Override
+                                                public void onClick(View v) {
+                                                    try {
+                                                        EditTextDefaul(etPass);
+                                                        ValidationDialog.hide();
+                                                        IniciarUser(filesModel);
+                                                    } catch (Exception e) {
+                                                        e.printStackTrace();
+                                                    }
+                                                }
+                                            });
+                                        }else {
+                                            txtforgot.setVisibility(View.GONE);
+                                        }
+                                        EditTextError(etPass);
+                                        etPass.addTextChangedListener(new TextWatcher() {
+                                            @Override
+                                            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                                            @Override
+                                            public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                                            @Override
+                                            public void afterTextChanged(Editable s) { EditTextDefaul(etPass); }
+                                        });
+                                    }
+                                } catch (Exception e) {
+                                    e.printStackTrace();
                                 }
+
+
                             }
                         }
                     }
@@ -1013,7 +1153,111 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
             }
         });
     }
+    private void IniciarUser(FilesModel filesModel) throws Exception {
+        forgothPassDialog.setContentView(R.layout.dialog_forgotpass);
+        forgothPassDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        forgothPassDialog.setCanceledOnTouchOutside(false);
 
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("Users");
+
+        //TextView mail = forgothPassDialog.findViewById(R.id.ltxtmail);
+        EditText etPass = forgothPassDialog.findViewById(R.id.etPass2);
+        TextView btnAceptar = forgothPassDialog.findViewById(R.id.btnAceptar);
+        TextView btnCancelar = forgothPassDialog.findViewById(R.id.btnCancelar);
+        FirebaseAuth mAuth = FirebaseAuth.getInstance();
+        FirebaseUser mUser = mAuth.getCurrentUser();
+
+        forgothPassDialog.show();
+
+        btnAceptar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!etPass.getText().toString().isEmpty()){
+                    reference.child(mUser.getUid()).get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<DataSnapshot> task) {
+                            //Log.d("USERID", task.getResult().getChildren().toString());
+
+                            for (DataSnapshot ds : task.getResult().getChildren()){
+
+                                if (ds.getKey().equals("Pass")){
+                                    try {
+                                        if (etPass.getText().toString().equals(desencriptar(ds.getValue().toString(), password))){
+                                            DelPassItem("La contraseña de este archivo se borrara", filesModel);
+                                            counterPassError = 0;
+                                            forgothPassDialog.hide();
+                                            //Log.d("USERID", "Olvido contra: " + desencriptar(txtPass, password));
+                                        }else {
+                                            Toast.makeText(mContext, "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
+                                            EditTextError(etPass);
+                                            etPass.addTextChangedListener(new TextWatcher() {
+                                                @Override
+                                                public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                                                @Override
+                                                public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                                                @Override
+                                                public void afterTextChanged(Editable s) { EditTextDefaul(etPass); }
+                                            });
+                                        }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+
+                            }
+                        }
+                    });
+
+
+                }else{
+                    Toast.makeText(mContext, "Debes llenar todos los campos", Toast.LENGTH_SHORT).show();
+                    EditTextError(etPass);
+                    etPass.addTextChangedListener(new TextWatcher() {
+                        @Override
+                        public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                        @Override
+                        public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                        @Override
+                        public void afterTextChanged(Editable s) { EditTextDefaul(etPass); }
+                    });
+                }
+            }
+        });
+
+        btnCancelar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EditTextDefaul(etPass);
+                counterPassError = 0;
+                forgothPassDialog.hide();
+            }
+        });
+
+    }
+    private String encriptar(String msg, String password) throws Exception{
+        SecretKey secretKey = generateKey(password);
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        byte[] datosEncriptadosBytes = cipher.doFinal(msg.getBytes());
+        String datosEncriptadosString = android.util.Base64.encodeToString(datosEncriptadosBytes, Base64.DEFAULT);
+        Log.d("TAG", datosEncriptadosString);
+        return datosEncriptadosString;
+    }
+    public String desencriptar (String mensaje, String password) throws Exception{
+        SecretKey secretKey = generateKey(password);
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.DECRYPT_MODE, secretKey);
+        byte[] datosDeco = Base64.decode(mensaje, Base64.DEFAULT);
+        byte[] datosDesencriptByte = cipher.doFinal(datosDeco);
+        return new String(datosDesencriptByte);
+    }
+    private SecretKey generateKey(String password) throws Exception{
+        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+        byte[] key = password.getBytes("UTF-8");
+        key = sha.digest(key);
+        SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
+        return secretKey;
+    }
     @Override
     public int getItemCount() {
         return mFiles.size();

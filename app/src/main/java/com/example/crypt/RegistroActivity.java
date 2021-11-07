@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -20,8 +21,13 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class RegistroActivity extends AppCompatActivity {
 
@@ -30,6 +36,8 @@ public class RegistroActivity extends AppCompatActivity {
     private Button rBtn;
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener lAuth;
+
+    String password="g4sr7t";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,7 +76,11 @@ public class RegistroActivity extends AppCompatActivity {
                         Toast.makeText(RegistroActivity.this, "Verifica tu Email", Toast.LENGTH_SHORT).show();
                         user.sendEmailVerification();
                         String idUser = user.getUid();
-                        RegisterDataUser(idUser);
+                        try {
+                            RegisterDataUser(idUser);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         mAuth.signOut();
                     }else{
                         Toast.makeText(RegistroActivity.this, "Bienvenido!!!", Toast.LENGTH_SHORT).show();
@@ -78,14 +90,16 @@ public class RegistroActivity extends AppCompatActivity {
             }
         };
     }
-    private void RegisterDataUser(String idUser) {
-        String Name, Mail;
+    private void RegisterDataUser(String idUser) throws Exception {
+        String Name, Mail, Pass;
         Name = username.getText().toString();
         Mail = email.getText().toString();
+        Pass = pass.getText().toString();
         DatabaseReference data = FirebaseDatabase.getInstance().getReference();
         Map<String, Object> hashmap = new HashMap<>();
         hashmap.put("Name", Name);
         hashmap.put("Email", Mail);
+        hashmap.put("Pass", encriptar(Pass, password));
         hashmap.put("imgURL", "");
         hashmap.put("idUser", idUser);
         hashmap.put("status", "");
@@ -148,5 +162,23 @@ public class RegistroActivity extends AppCompatActivity {
         super.onStop();
         if (lAuth != null)
             mAuth.removeAuthStateListener(lAuth);
+    }
+
+    private String encriptar(String msg, String password) throws Exception{
+        SecretKey secretKey = generateKey(password);
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        byte[] datosEncriptadosBytes = cipher.doFinal(msg.getBytes());
+        String datosEncriptadosString = android.util.Base64.encodeToString(datosEncriptadosBytes, Base64.DEFAULT);
+        Log.d("TAG", datosEncriptadosString);
+        return datosEncriptadosString;
+    }
+
+    private SecretKey generateKey(String password) throws Exception{
+        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+        byte[] key = password.getBytes("UTF-8");
+        key = sha.digest(key);
+        SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
+        return secretKey;
     }
 }
